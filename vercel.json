@@ -4,9 +4,17 @@
     {
       "src": "index.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "data.json",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/data.json",
+      "dest": "/data.json"
+    },
     {
       "src": "/(.*)",
       "dest": "/index.html"
