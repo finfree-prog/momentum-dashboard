@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momentum & Rebound Stock Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #6b7280; }
+        .action-buy { background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: 500; }
+        .action-sell { background-color: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: 500; }
+        .action-watch { background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: 500; }
+        .rsi-oversold { color: #10b981; font-weight: 600; }
+        .rsi-overbought { color: #ef4444; font-weight: 600; }
+        .rsi-neutral { color: #6b7280; font-weight: 600; }
+        .volume-up { color: #10b981; }
+        .volume-down { color: #ef4444; }
+        .macd-positive { color: #10b981; }
+        .macd-negative { color: #ef4444; }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
+        }
+        th {
+            text-align: left;
+            padding: 1rem;
+            font-weight: 600;
+            color: #374151;
+            background-color: #f9fafb;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+        }
+        td {
+            padding: 1rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+        .ticker-symbol {
+            font-weight: 700;
+            font-size: 1.125rem;
+            color: #1f2937;
+        }
+        .price-change {
+            font-weight: 600;
+        }
+        .sparkline {
+            height: 20px;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-4">
+                Momentum & Rebound Stock Dashboard
+            </h1>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Institutional-grade analysis combining fundamentals, technicals, and sentiment
+            </p>
+            <div class="mt-4 flex justify-center space-x-4">
+                <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">Live Data</span>
+                <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium" id="last-updated">Loading...</span>
+                <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">20 Stocks/ETFs</span>
+            </div>
+        </header>
+
+        <!-- Disclaimer -->
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 mb-10 rounded-lg">
+            <p class="text-gray-800">
+                <strong>Disclaimer:</strong> This analysis is for informational purposes only and does not constitute financial advice. 
+                No trade has a 100% chance of profit. Short-term trading carries high risk; always use proper risk management and consider your own financial situation.
+            </p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="glass p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Buy Signals</p>
+                        <p class="text-2xl font-bold text-green-600" id="buy-count">0</p>
+                    </div>
+                    <div class="text-green-600 text-2xl">
+                        ↑
+                    </div>
+                </div>
+            </div>
+            <div class="glass p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Watch/Neutral</p>
+                        <p class="text-2xl font-bold text-yellow-600" id="watch-count">0</p>
+                    </div>
+                    <div class="text-yellow-600 text-2xl">
+                        →
+                    </div>
+                </div>
+            </div>
+            <div class="glass p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Sell Signals</p>
+                        <p class="text-2xl font-bold text-red-600" id="sell-count">0</p>
+                    </div>
+                    <div class="text-red-600 text-2xl">
+                        ↓
+                    </div>
+                </div>
+            </div>
+            <div class="glass p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-500">Avg RSI</p>
+                        <p class="text-2xl font-bold" id="avg-rsi">50</p>
+                    </div>
+                    <div class="text-gray-600 text-2xl">
+                        Ω
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 to Watch -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-6 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.504-.203-2.97-.547-4.302a11.945 11.945 0 00-2.456-.703z"/></svg>
+                Top 5 to Watch
+            </h2>
+            <div id="top5-container" class="mt-4 space-y-3">
+                <!-- Top 5 items will be inserted here -->
+            </div>
+        </section>
+
+        <!-- Main Table -->
+        <section>
+            <h2 class="text-2xl font-bold mb-6">Stock Analysis</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="w-16">Ticker</th>
+                            <th class="w-20">Price</th>
+                            <th class="w-16">52W Range</th>
+                            <th class="w-16">RSI</th>
+                            <th class="w-20">MACD</th>
+                            <th class="w-16">Action</th>
+                            <th class="w-20">Entry Zone</th>
+                            <th class="w-16">Stop Loss</th>
+                            <th class="w-20">Targets (1R/2R)</th>
+                            <th class="w-24">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-table-body">
+                        <!-- Rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Fetch data and populate dashboard
+        async function loadData() {
+            try {
+                const response = await fetch('data.json');
+                const data = await response.json();
+                
+                // Update timestamp
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+                
+                // Calculate stats
+                const buyCount = data.filter(d => d.action_class === 'action-buy').length;
+                const sellCount = data.filter(d => d.action_class === 'action-sell').length;
+                const watchCount = data.filter(d => d.action_class === 'action-watch').length;
+                const avgRSI = data.reduce((sum, d) => sum + (d.rsi || 50), 0) / data.length;
+                
+                document.getElementById('buy-count').textContent = buyCount;
+                document.getElementById('sell-count').textContent = sellCount;
+                document.getElementById('watch-count').textContent = watchCount;
+                document.getElementById('avg-rsi').textContent = avgRSI.toFixed(1);
+                
+                // Populate table
+                const tbody = document.getElementById('stock-table-body');
+                tbody.innerHTML = '';
+                
+                data.forEach(stock => {
+                    if (stock.error) return;
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = 'card-hover';
+                    
+                    // Format price change
+                    const dailyChange = stock.changes?.daily ?? 0;
+                    const dailyClass = dailyChange >= 0 ? 'positive' : 'negative';
+                    const dailySign = dailyChange >= 0 ? '+' : '';
+                    
+                    // Format 52W range
+                    const range52W = `$${stock.week_52_low?.toFixed(2) ?? 'N/A'} - $${stock.week_52_high?.toFixed(2) ?? 'N/A'}`;
+                    
+                    // Format RSI with class
+                    const rsiVal = stock.rsi ?? 50;
+                    let rsiClass = 'rsi-neutral';
+                    if (rsiVal < 30) rsiClass = 'rsi-oversold';
+                    else if (rsiVal > 70) rsiClass = 'rsi-overbought';
+                    
+                    // Format MACD
+                    const macdHist = stock.macd_hist ?? 0;
+                    const macdClass = macdHist >= 0 ? 'macd-positive' : 'macd-negative';
+                    
+                    // Format action
+                    const actionBadge = `<span class="action-${stock.action_class}">${stock.action}</span>`;
+                    
+                    // Format entry zone
+                    const entryZone = stock.entry_low !== null && stock.entry_high !== null 
+                        ? `$${stock.entry_low.toFixed(2)} - $${stock.entry_high.toFixed(2)}` 
+                        : 'N/A';
+                    
+                    // Format stop loss
+                    const stopLoss = stock.stop_loss !== null 
+                        ? `$${stock.stop_loss.toFixed(2)}` 
+                        : 'N/A';
+                    
+                    // Format targets
+                    const target1 = stock.target1 !== null ? `$${stock.target1.toFixed(2)}` : 'N/A';
+                    const target2 = stock.target2 !== null ? `$${stock.target2.toFixed(2)}` : 'N/A';
+                    const targets = target1 !== 'N/A' && target2 !== 'N/A' ? `${target1} / ${target2}` : 'N/A';
+                    
+                    // Format notes (bullish/bearish factors)
+                    const notes = [];
+                    if (stock.bullish?.length) notes.push(`<span class="text-green-600">🟢 ${stock.bullish.join('; ')}</span>`);
+                    if (stock.bearish?.length) notes.push(`<span class="text-red-600">🔴 ${stock.bearish.join('; ')}</span>`);
+                    const notesHTML = notes.length ? notes.join('<br>') : '<span class="text-gray-500">No strong signals</span>';
+                    
+                    tr.innerHTML = `
+                        <td class="ticker-symbol">${stock.ticker}</td>
+                        <td>$${stock.current_price?.toFixed(2) ?? 'N/A'} <span class="text-xs ${dailyClass}">${dailySign}${dailyChange.toFixed(2)}%</span></td>
+                        <td>${range52W}</td>
+                        <td><span class="${rsiClass}">${rsiVal.toFixed(1)}</span></td>
+                        <td><span class="${macdClass}">${macdHist.toFixed(3)}</span></td>
+                        <td>${actionBadge}</td>
+                        <td>${entryZone}</td>
+                        <td>${stopLoss}</td>
+                        <td>${targets}</td>
+                        <td class="max-w-xs text-sm">${notesHTML}</td>
+                    `;
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                // Populate Top 5
+                const top5Container = document.getElementById('top5-container');
+                // Simple scoring: prioritize Buy signals, then low RSI, then negative monthly change
+                const scored = data
+                    .filter(d => !d.error)
+                    .map(d => {
+                        let score = 0;
+                        if (d.action_class === 'action-buy') score += 3;
+                        else if (d.action_class === 'action-watch') score += 1;
+                        if (d.rsi && d.rsi < 30) score += 2;
+                        else if (d.rsi && d.rsi > 70) score -= 2;
+                        const monthly = d.changes?.monthly ?? 0;
+                        if (monthly < -10) score += 2;
+                        else if (monthly > 10) score -= 2;
+                        return { ...d, score };
+                    })
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+                
+                top5Container.innerHTML = '';
+                scored.forEach((stock, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'glass p-4 card-hover flex items-start space-x-3';
+                    item.innerHTML = `
+                        <div class="flex-shrink-0">
+                            <div class="bg-indigo-100 text-indigo-800 rounded-full p-2 text-xl">${index + 1}</div>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-medium text-gray-800">${stock.ticker}</h3>
+                            <p class="text-sm text-gray-600">${stock.action}</p>
+                            <p class="text-xs text-gray-500 mt-1">RSI: ${(stock.rsi ?? 50).toFixed(1)} • ${stock.changes?.monthly?.toFixed(2) ?? 0}% Mo</p>
+                        </div>
+                    `;
+                    top5Container.appendChild(item);
+                });
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('last-updated').textContent = 'Error loading data';
+            }
+        }
+        
+        // Load data on page load
+        loadData();
+        
+        // Refresh every 5 minutes
+        setInterval(loadData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
